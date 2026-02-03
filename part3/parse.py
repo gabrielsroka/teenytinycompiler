@@ -41,15 +41,15 @@ class Parser:
         return self.checkToken(TokenType.GT) or self.checkToken(TokenType.GTEQ) or self.checkToken(TokenType.LT) or self.checkToken(TokenType.LTEQ) or self.checkToken(TokenType.EQEQ) or self.checkToken(TokenType.NOTEQ)
 
     def abort(self, message):
-        sys.exit("Error! " + message)
+        sys.exit("Error. " + message)
 
 
     # Production rules.
 
     # program ::= {statement}
     def program(self):
-        self.emitter.headerLine("#include <stdio.h>")
-        self.emitter.headerLine("int main(void){")
+        self.emitter.emitLine("#include <stdio.h>\n")
+        self.emitter.emitLine("int main(void) {")
         
         # Since some newlines are required in our grammar, need to skip the excess.
         while self.checkToken(TokenType.NEWLINE):
@@ -79,24 +79,24 @@ class Parser:
 
             if self.checkToken(TokenType.STRING):
                 # Simple string, so print it.
-                self.emitter.emitLine("printf(\"" + self.curToken.text + "\\n\");")
+                self.emitter.emitLine('printf("' + self.curToken.text + '\\n");')
                 self.nextToken()
 
             else:
                 # Expect an expression and print the result as a float.
-                self.emitter.emit("printf(\"%" + ".2f\\n\", (float)(")
+                self.emitter.emit('printf("%.2f\\n", (float)(')
                 self.expression()
                 self.emitter.emitLine("));")
 
         # "IF" comparison "THEN" block "ENDIF"
         elif self.checkToken(TokenType.IF):
             self.nextToken()
-            self.emitter.emit("if(")
+            self.emitter.emit("if (")
             self.comparison()
 
             self.match(TokenType.THEN)
             self.nl()
-            self.emitter.emitLine("){")
+            self.emitter.emitLine(") {")
 
             # Zero or more statements in the body.
             while not self.checkToken(TokenType.ENDIF):
@@ -108,12 +108,12 @@ class Parser:
         # "WHILE" comparison "REPEAT" block "ENDWHILE"
         elif self.checkToken(TokenType.WHILE):
             self.nextToken()
-            self.emitter.emit("while(")
+            self.emitter.emit("while (")
             self.comparison()
 
             self.match(TokenType.REPEAT)
             self.nl()
-            self.emitter.emitLine("){")
+            self.emitter.emitLine(") {")
 
             # Zero or more statements in the loop body.
             while not self.checkToken(TokenType.ENDWHILE):
@@ -148,7 +148,7 @@ class Parser:
             #  Check if ident exists in symbol table. If not, declare it.
             if self.curToken.text not in self.symbols:
                 self.symbols.add(self.curToken.text)
-                self.emitter.headerLine("float " + self.curToken.text + ";")
+                self.emitter.emit("float ")
 
             self.emitter.emit(self.curToken.text + " = ")
             self.match(TokenType.IDENT)
@@ -164,13 +164,12 @@ class Parser:
             # If variable doesn't already exist, declare it.
             if self.curToken.text not in self.symbols:
                 self.symbols.add(self.curToken.text)
-                self.emitter.headerLine("float " + self.curToken.text + ";")
+                self.emitter.emitLine("float " + self.curToken.text + ";")
 
             # Emit scanf but also validate the input. If invalid, set the variable to 0 and clear the input.
-            self.emitter.emitLine("if(0 == scanf(\"%" + "f\", &" + self.curToken.text + ")) {")
+            self.emitter.emitLine('if (scanf("%f", &' + self.curToken.text + ") == 0) {")
             self.emitter.emitLine(self.curToken.text + " = 0;")
-            self.emitter.emit("scanf(\"%")
-            self.emitter.emitLine("*s\");")
+            self.emitter.emitLine('scanf("%*s");')
             self.emitter.emitLine("}")
             self.match(TokenType.IDENT)
 
